@@ -2,10 +2,10 @@ import React, { Component } from "react";
 import { Switch, Route, Link, BrowserRouter as Router } from "react-router-dom";
 import axios from 'axios';
 import jwt_decode from 'jwt-decode';
-
 import AddProduct from './components/AddProduct';
 import Cart from './components/Cart';
 import Login from './components/Login';
+import Registration from './components/Registration';
 import ProductList from './components/ProductList';
 
 import Context from "./Context";
@@ -30,6 +30,29 @@ export default class App extends Component {
   cart = cart? JSON.parse(cart) : {};
 
   this.setState({ user,  products: products.data, cart });
+  }
+  registration = async (name, email, password) => {
+    const res = await axios.post(
+      'http://localhost:3001/login',
+      { name, email, password },
+    ).catch((res) => {
+      return { status: 401, message: 'Unauthorized' }
+    })
+  
+    if(res.status === 200) {
+      const { email } = jwt_decode(res.data.accessToken)
+      const user = {
+        email,
+        token: res.data.accessToken,
+        accessLevel: email === 'admin@esouvenir.com' ? 0 : 1
+      }
+  
+      this.setState({ user });
+      localStorage.setItem("user", JSON.stringify(user));
+      return true;
+    } else {
+      return false;
+    }
   }
 
   login = async (email, password) => {
@@ -118,14 +141,14 @@ export default class App extends Component {
     this.setState({ products });
     this.clearCart();
   };
-}
-  function quantityUp(id, val){
+
+   quantityUp(id, val){
     return {type: 'QTY_UP', id, up: val}
   }
-  function quantityDown(id, val){
+   quantityDown(id, val){
     return {type: 'QTY_DOWN', id, down: val}
   }
-  const cart = (state, action) => {
+  cart = (state, action) => {
     switch(action.type){
       case 'QTY_UP':
         return Object.assign([], state.map(item => {
@@ -145,10 +168,10 @@ export default class App extends Component {
          return state;
      }
   };
-  function purchase(cart){
+   purchase(cart){
     return {type: 'PURCHASE', cart}
   }
-  const products = (state, action) => {
+   products = (state, action) => {
     switch(action.type){
       case 'PURCHASE':
         const ids = action.cart.map(item => item.id);
@@ -163,7 +186,6 @@ export default class App extends Component {
       }
     }
   
-
   render() {
     return (
       <Context.Provider
@@ -172,9 +194,12 @@ export default class App extends Component {
           removeFromCart: this.removeFromCart,
           addToCart: this.addToCart,
           login: this.login,
+          registration: this.registration,
           addProduct: this.addProduct,
           clearCart: this.clearCart,
-          checkout: this.checkout
+          checkout: this.checkout,
+          quantityUp: this.quantityUp,
+          quantityDown: this.quantityDown
         }}
       >
         <Router ref={this.routerRef}>
@@ -231,11 +256,14 @@ export default class App extends Component {
                     Logout
                   </Link>
                 )}
-                
+                 <Link to="/registration" className="navbar-item">
+                    New Account
+                  </Link>
               </div>
             </nav>
             <Switch>
               <Route exact path="/" component={ProductList} />
+              <Route exact path="/registration" component={Registration} />
               <Route exact path="/login" component={Login} />
               <Route exact path="/cart" component={Cart} />
               <Route exact path="/add-product" component={AddProduct} />
@@ -246,4 +274,4 @@ export default class App extends Component {
       </Context.Provider>
     );
   }
-
+}
